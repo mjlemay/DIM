@@ -1,5 +1,6 @@
 import { settingsSelector } from 'app/dim-api/selectors';
 import { isPhonePortraitSelector } from './shell/selectors';
+import { listenerMiddleware } from './store/listener';
 import { observeStore } from './utils/redux';
 
 function setCSSVariable(property: string, value: { toString: () => string }) {
@@ -13,31 +14,39 @@ function setCSSVariable(property: string, value: { toString: () => string }) {
  */
 // TODO: swap these into hooks
 export default function updateCSSVariables() {
-  observeStore(settingsSelector, (currentState, nextState, state) => {
-    if (!currentState) {
-      return;
-    }
+  listenerMiddleware.startListening({
+    predicate: (_action, currentState, originalState) =>
+      settingsSelector(currentState) !== settingsSelector(originalState),
+    effect: async (_action, listenerApi) => {
+      const currentState = settingsSelector(listenerApi.getOriginalState());
+      const nextState = settingsSelector(listenerApi.getState());
+      if (!currentState) {
+        return;
+      }
 
-    if (currentState.itemSize !== nextState.itemSize) {
-      setCSSVariable('--item-size', `${Math.max(48, nextState.itemSize)}px`);
-    }
-    if (currentState.charCol !== nextState.charCol && !isPhonePortraitSelector(state)) {
-      setCSSVariable('--tiles-per-char-column', nextState.charCol);
-    }
-    if (
-      currentState.charColMobile !== nextState.charColMobile &&
-      // this check is needed so on start up/load this doesn't override the value set above on "normal" mode.
-      isPhonePortraitSelector(state)
-    ) {
-      setCSSVariable('--tiles-per-char-column', nextState.charColMobile);
-    }
+      const isPhonePortrait = isPhonePortraitSelector(listenerApi.getState());
 
-    // Set a class on the body to control the theme. This must be applied on the body for syncThemeColor to work.
-    if ($featureFlags.themePicker && currentState.theme !== nextState.theme) {
-      const themeClass = `theme-${nextState.theme}`;
-      document.body.className = themeClass;
-      syncThemeColor(isPhonePortraitSelector(state));
-    }
+      if (currentState.itemSize !== nextState.itemSize) {
+        setCSSVariable('--item-size', `${Math.max(48, nextState.itemSize)}px`);
+      }
+      if (currentState.charCol !== nextState.charCol && !isPhonePortrait) {
+        setCSSVariable('--tiles-per-char-column', nextState.charCol);
+      }
+      if (
+        currentState.charColMobile !== nextState.charColMobile &&
+        // this check is needed so on start up/load this doesn't override the value set above on "normal" mode.
+        isPhonePortrait
+      ) {
+        setCSSVariable('--tiles-per-char-column', nextState.charColMobile);
+      }
+
+      // Set a class on the body to control the theme. This must be applied on the body for syncThemeColor to work.
+      if ($featureFlags.themePicker && currentState.theme !== nextState.theme) {
+        const themeClass = `theme-${nextState.theme}`;
+        document.body.className = themeClass;
+        syncThemeColor(isPhonePortrait);
+      }
+    },
   });
 
   // a subscribe on isPhonePortrait is needed when the user on mobile changes from portrait to landscape
