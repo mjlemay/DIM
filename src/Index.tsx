@@ -22,7 +22,7 @@ import { initGoogleAnalytics } from './app/google';
 import { initi18n } from './app/i18n';
 import registerServiceWorker from './app/register-service-worker';
 import { safariTouchFix } from './app/safari-touch-fix';
-import { watchLanguageChanges } from './app/settings/observers';
+import { watchLanguageChanges2 } from './app/settings/observers';
 import { saveWishListToIndexedDB } from './app/wishlists/observers';
 infoLog(
   'app',
@@ -77,7 +77,7 @@ const i18nPromise = initi18n();
   await i18nPromise;
 
   // Settings depends on i18n
-  watchLanguageChanges();
+  watchLanguageChanges2(store);
 
   root.render(<Root />);
 })();

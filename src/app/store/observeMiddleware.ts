@@ -19,12 +19,21 @@ interface StoreObserver<T> {
 
 // Need to user a higher order function to get the correct typings and inference, it will now correctly
 // type the value of T based on what the getObserved returns
-const observe = <T>(storeObserver: StoreObserver<T>) =>
+export const observe = <T>(storeObserver: StoreObserver<T>) =>
   createCustomAction('observer/OBSERVE', (storeObserver: StoreObserver<T>) => ({ storeObserver }))(
     storeObserver,
   );
-const unobserve = createAction('observer/UNOBSERVE')<string>();
-const clearObservers = createAction('observer/CLEAR_OBSERVERS')();
+export const unobserve = createAction('observer/UNOBSERVE')<string>();
+export const clearObservers = createAction('observer/CLEAR_OBSERVERS')();
+
+function isObserveAction(action: unknown): action is ReturnType<typeof observe> {
+  return (
+    typeof action === 'object' &&
+    action !== null &&
+    'type' in action &&
+    action.type === 'observer/OBSERVE'
+  );
+}
 
 export function observerMiddleware<D extends Dispatch>(
   api: MiddlewareAPI<D, RootState>,
@@ -35,7 +44,7 @@ export function observerMiddleware<D extends Dispatch>(
       return next(action);
     }
 
-    if (isActionOf(observe, action)) {
+    if (isObserveAction(action)) {
       observers.set(action.storeObserver.id, action.storeObserver);
       return;
     }
